@@ -17,11 +17,11 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
   final List<String> _cities = ['New York', 'London', 'Tokyo', 'Invalid City'];
 
   double celsiusToFahrenheit(double celsius) {
-    return celsius * 9 / 5;
+    return (celsius * 9 / 5) + 32;
   }
 
   double fahrenheitToCelsius(double fahrenheit) {
-    return fahrenheit - 32 * 5 / 9;
+    return (fahrenheit - 32) * 5 / 9;
   }
 
   // Simulate API call that sometimes returns null or malformed data
@@ -32,9 +32,8 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
       return null;
     }
 
-    
     if (DateTime.now().millisecond % 4 == 0) {
-      return {'city': city, 'temperature': 22.5}; 
+      return {'city': city, 'temperature': 22.5};
     }
 
     return {
@@ -57,12 +56,43 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
       });
     }
 
-    
-    final data = await _fetchWeatherData(_selectedCity);
-    setState(() {
-      _weatherData = WeatherData.fromJson(data); 
-      _isLoading = false;
-    });
+    try {
+      final data = await _fetchWeatherData(_selectedCity);
+      if (!mounted) return;
+      if (data == null) {
+        setState(() {
+          _error = 'Failed to load weather data. City not found.';
+          _weatherData = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Check if data has all required fields
+      if (!data.containsKey('description') ||
+          !data.containsKey('humidity') ||
+          !data.containsKey('windSpeed') ||
+          !data.containsKey('icon')) {
+        setState(() {
+          _error = 'Incomplete weather data received. Please try again.';
+          _weatherData = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _weatherData = WeatherData.fromJson(data);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Error loading weather: ${e.toString()}';
+        _weatherData = null;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -108,7 +138,6 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
             ],
           ),
           const SizedBox(height: 16),
-
           // Temperature unit toggle
           Row(
             children: [
@@ -126,10 +155,30 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
             ],
           ),
           const SizedBox(height: 16),
-
-          if (_isLoading && _error == null)
+          if (_isLoading)
             const Center(child: CircularProgressIndicator())
-          
+          else if (_error != null)
+            Card(
+              elevation: 4,
+              color: Colors.red.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    const SizedBox(height: 8),
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
           else if (_weatherData != null)
             Card(
               elevation: 4,
@@ -199,8 +248,7 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
                   ],
                 ),
               ),
-            )
-          
+            ),
         ],
       ),
     );
@@ -238,15 +286,14 @@ class WeatherData {
     required this.icon,
   });
 
-  
   factory WeatherData.fromJson(Map<String, dynamic>? json) {
     return WeatherData(
       city: json!['city'],
       temperatureCelsius: json['temperature'].toDouble(),
       description: json['description'],
-      humidity: json['humidity'], 
-      windSpeed: json['windSpeed'].toDouble(), 
-      icon: json['icon'], 
+      humidity: json['humidity'],
+      windSpeed: json['windSpeed'].toDouble(),
+      icon: json['icon'],
     );
   }
 }
