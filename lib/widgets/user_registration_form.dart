@@ -18,14 +18,40 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
   String _message = '';
 
   bool isValidEmail(String email) {
-    return email.contains('@');
+    // Proper email validation using regex pattern
+    // Pattern checks for: text@text.text format
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    return emailRegex.hasMatch(email);
   }
 
   bool isValidPassword(String password) {
+    // Password must be at least 8 characters
+    if (password.length < 8) {
+      return false;
+    }
+
+    // Must contain at least one number
+    if (!password.contains(RegExp(r'[0-9]'))) {
+      return false;
+    }
+
+    // Must contain at least one special character
+    if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      return false;
+    }
+
     return true;
   }
 
   Future<void> _submitForm() async {
+    // Validate form before submission
+    if (!_formKey.currentState!.validate()) {
+      // Form is invalid, don't submit
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _message = '';
