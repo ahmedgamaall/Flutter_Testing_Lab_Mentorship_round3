@@ -5,7 +5,7 @@ class CartItem {
   final String name;
   final double price;
   int quantity;
-  final double discount; // Discount percentage (0.0 to 1.0)
+  final double discount; /// Discount percentage (0.0 to 1.0)
 
   CartItem({
     required this.id,
@@ -28,9 +28,17 @@ class _ShoppingCartState extends State<ShoppingCart> {
 
   void addItem(String id, String name, double price, {double discount = 0.0}) {
     setState(() {
-      _items.add(
-        CartItem(id: id, name: name, price: price, discount: discount),
-      );
+      /// Check if item with this ID already exists
+      final existingIndex = _items.indexWhere((item) => item.id == id);
+      if (existingIndex != -1) {
+        /// Item exists, update quantity instead of creating duplicate
+        _items[existingIndex].quantity += 1;
+      } else {
+        /// New item, add to cart
+        _items.add(
+          CartItem(id: id, name: name, price: price, discount: discount),
+        );
+      }
     });
   }
 
@@ -70,13 +78,15 @@ class _ShoppingCartState extends State<ShoppingCart> {
   double get totalDiscount {
     double discount = 0;
     for (var item in _items) {
-      discount += item.discount * item.quantity;
+      /// Discount = price * quantity * discount percentage
+      discount += item.price * item.quantity * item.discount;
     }
     return discount;
   }
 
   double get totalAmount {
-    return subtotal + totalDiscount;
+    /// Total = Subtotal - Discount (not +)
+    return subtotal - totalDiscount;
   }
 
   int get totalItems {
@@ -112,7 +122,6 @@ class _ShoppingCartState extends State<ShoppingCart> {
           ],
         ),
         const SizedBox(height: 16),
-
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -150,7 +159,6 @@ class _ShoppingCartState extends State<ShoppingCart> {
           ),
         ),
         const SizedBox(height: 16),
-
         _items.isEmpty
             ? const Center(child: Text('Cart is empty'))
             : ListView.builder(
